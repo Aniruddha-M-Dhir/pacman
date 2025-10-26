@@ -1,3 +1,5 @@
+
+
 //board 
 let board;
 const rowCount = 21;
@@ -18,23 +20,6 @@ let pacmanLeftImage;
 let pacmanRightImage;
 let wallImage;
 
-
-window.onload = function() {
-
-    let canvas = document.getElementById("board");
-    canvas.width = boardWidth;
-    canvas.height = boardHeight;
-    context = canvas.getContext("2d");
-
-    loadImages();
-    loadMap();
-    console.log(walls.size);
-    console.log(foods.size);
-    console.log(ghosts.size);
-    console.log(pacman.x, pacman.y);
-    update();
-
-}
 
 //X = wall, O = skip, P = pac man, ' ' = food
 //Ghosts: b = blue, o = orange, p = pink, r = red
@@ -67,6 +52,32 @@ const foods = new Set();
 const ghosts = new Set();
 let pacman;
 
+const directions = ['U', 'D', 'L', 'R'];
+
+
+
+window.onload = function() {
+
+    let canvas = document.getElementById("board");
+    canvas.width = boardWidth;
+    canvas.height = boardHeight;
+    context = canvas.getContext("2d");
+
+    loadImages();
+    loadMap();
+    console.log(walls.size);
+    console.log(foods.size);
+    console.log(ghosts.size);
+    console.log(pacman.x, pacman.y);
+    for (let ghost of ghosts.values()) {
+        const newDirection = directions[Math.floor(Math.random()*4)];
+        ghost.updateDirection(newDirection);
+    }
+    update();
+    document.addEventListener("keyup", movePacman);
+
+}
+
 
 
 
@@ -82,7 +93,7 @@ function loadImages() {
 
 
   orangeGhostImage = new Image();
-    orangeGhostImage.src = "images/pinkGhost.png";
+    orangeGhostImage.src = "images/orangeGhost.png";
 
   pacmanUpImage = new Image();
   pacmanUpImage.src = "images/pacmanUp.png";
@@ -148,12 +159,78 @@ function loadMap() {
     }
 }
     function update() {
+        move();
         draw();
-        setTimeout(update, 50);
+        setTimeout(update, 50);//20FPS
         
     }
     function draw() {
+        context.clearRect(0, 0, boardWidth, boardHeight);
         context.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height);
+        for (let ghost of ghosts.values()) {
+            context.drawImage(ghost.image, ghost.x, ghost.y, ghost.width, ghost.height);
+        }
+        for (let wall of walls.values()) {
+            context.drawImage(wall.image, wall.x, wall.y, wall.width, wall.height);
+        }
+        context.fillStyle = "yellow";
+        for (let food of foods.values()) {
+            context.fillRect(food.x, food.y, food.width, food.height);
+        }
+    }
+
+    function move(){
+        pacman.x += pacman.velocityX;
+        pacman.y += pacman.velocityY;
+        //check wall collision
+        for (let wall of walls.values()) {
+            if (checkCollision(pacman, wall)) {
+                pacman.x -= pacman.velocityX;
+                pacman.y -= pacman.velocityY;
+                break;
+            }
+        }
+        for (let ghost of ghosts.values()) {
+            ghost.x += ghost.velocityX;
+            ghost.y += ghost.velocityY;
+            //check wall collision
+            for (let wall of walls.values()) {
+                if (checkCollision(ghost, wall) || ghost.x <= 0 || ghost.x+ ghost.width >= boardWidth 
+                || ghost.y < 0 || ghost.y > boardHeight) {
+                    ghost.x -= ghost.velocityX;
+                    ghost.y -= ghost.velocityY;
+                    const newDirection = directions[Math.floor(Math.random()*4)];
+                    ghost.updateDirection(newDirection);
+                    break;
+                }
+            }
+        }
+    }
+
+    function movePacman(e) {
+        if (e.code == "ArrowUp" || e.code == "KeyW") {
+            pacman.updateDirection('U');
+            pacman.image = pacmanUpImage;
+        }
+        else if (e.code == "ArrowDown" || e.code == "KeyS") {
+            pacman.updateDirection('D');
+            pacman.image = pacmanDownImage;
+        }
+        else if (e.code == "ArrowLeft" || e.code == "KeyA") {
+            pacman.updateDirection('L');
+            pacman.image = pacmanLeftImage;
+        }
+        else if (e.code == "ArrowRight" || e.code == "KeyD") {
+            pacman.updateDirection('R');
+            pacman.image = pacmanRightImage;
+        }
+    }
+
+    function checkCollision(a, b) {
+        return a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y;
     }
 
 
@@ -167,5 +244,48 @@ class Block {
         this.height = height;
         this.startX = x;
         this.startY = y;
+
+        this.direction = 'R';
+        this.velocityX= 0;
+        this.velocityY= 0;
     }
-}
+
+    updateDirection(direction) {
+        const prevDirection = this.direction;
+        this.direction = direction;
+        this.updateVelocity();
+        this.x += this.velocityX;
+        this.y += this.velocityY;
+
+        for (let wall of walls.values()) {
+            if (checkCollision(this, wall)) {
+                this.x -= this.velocityX;
+                this.y -= this.velocityY;
+                this.direction = prevDirection;
+                this.updateVelocity();
+                return;
+            }
+        }
+     }
+    
+    updateVelocity() {
+        if (this.direction == 'U') {
+            this.velocityX = 0;
+            this.velocityY = -tileSize/4;
+        }
+        else if (this.direction == 'D') {
+            this.velocityX = 0;
+            this.velocityY = tileSize/4;
+        }
+        else if (this.direction == 'L') {
+            this.velocityX = -tileSize/4;
+            this.velocityY = 0;
+        }
+        else if (this.direction == 'R') {
+            this.velocityX = tileSize/4;
+            this.velocityY = 0;
+        }
+    }
+    }
+
+
