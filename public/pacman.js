@@ -53,6 +53,9 @@ const ghosts = new Set();
 let pacman;
 
 const directions = ['U', 'D', 'L', 'R'];
+let score = 0;
+let lives = 3;
+let gameOver = false;
 
 
 
@@ -74,7 +77,7 @@ window.onload = function() {
         ghost.updateDirection(newDirection);
     }
     update();
-    document.addEventListener("keyup", movePacman);
+    document.addEventListener("keydown", movePacman);
 
 }
 
@@ -159,6 +162,9 @@ function loadMap() {
     }
 }
     function update() {
+        if (gameOver) {
+            return;
+        }
         move();
         draw();
         setTimeout(update, 50);//20FPS
@@ -177,37 +183,98 @@ function loadMap() {
         for (let food of foods.values()) {
             context.fillRect(food.x, food.y, food.width, food.height);
         }
+        //score
+        context.fillStyle = "white";
+        context.font = "24px Arial";
+        if (gameOver) {
+            context.fillText("Game Over! "+ String (score), tileSize/2, tileSize/2);
+        } else {
+            context.fillText("x " + String(lives)+ " score: " + String(score), tileSize/2, tileSize/2);
+        }
     }
 
-    function move(){
-        pacman.x += pacman.velocityX;
-        pacman.y += pacman.velocityY;
-        //check wall collision
-        for (let wall of walls.values()) {
-            if (checkCollision(pacman, wall)) {
-                pacman.x -= pacman.velocityX;
-                pacman.y -= pacman.velocityY;
-                break;
-            }
-        }
-        for (let ghost of ghosts.values()) {
-            ghost.x += ghost.velocityX;
-            ghost.y += ghost.velocityY;
-            //check wall collision
-            for (let wall of walls.values()) {
-                if (checkCollision(ghost, wall) || ghost.x <= 0 || ghost.x+ ghost.width >= boardWidth 
-                || ghost.y < 0 || ghost.y > boardHeight) {
-                    ghost.x -= ghost.velocityX;
-                    ghost.y -= ghost.velocityY;
-                    const newDirection = directions[Math.floor(Math.random()*4)];
-                    ghost.updateDirection(newDirection);
-                    break;
-                }
-            }
-        }
+    function move() {
+  pacman.x += pacman.velocityX;
+  pacman.y += pacman.velocityY;
+
+  // walls vs pacman
+  for (let wall of walls.values()) {
+    if (checkCollision(pacman, wall)) {
+      pacman.x -= pacman.velocityX;
+      pacman.y -= pacman.velocityY;
+      break;
     }
+  }
+
+  // ghosts
+  for (let ghost of ghosts.values()) {
+    if (ghost.y === tileSize * 9 && ghost.direction !== 'U' && ghost.direction !== 'D') {
+      ghost.updateDirection('U');
+    }
+
+    ghost.x += ghost.velocityX;
+    ghost.y += ghost.velocityY;
+
+    // walls vs ghost + bounds
+    for (let wall of walls.values()) {
+      if (
+        checkCollision(ghost, wall) ||
+        ghost.x <= 0 || ghost.x + ghost.width >= boardWidth ||
+        ghost.y < 0 || ghost.y + ghost.height >= boardHeight
+      ) {
+        ghost.x -= ghost.velocityX;
+        ghost.y -= ghost.velocityY;
+        const newDirection = directions[Math.floor(Math.random() * 4)];
+        ghost.updateDirection(newDirection);
+        break;
+      }
+    }
+
+    // pacman vs ghost
+    if (checkCollision(pacman, ghost)) {
+      lives -= 1;
+      
+      if (lives == 0){
+
+        gameOver = true;
+        return;
+      } 
+      resetPositions();
+      
+    }
+  }
+
+  // food
+  let foodEaten = null;
+  for (let food of foods.values()) {
+    if (checkCollision(pacman, food)) {
+      foodEaten = food;
+      score += 10;
+      break;
+    }
+  }
+  foods.delete(foodEaten);
+
+  if (foods.size == 0) {
+    loadMap();
+    resetPositions();
+  }
+    
+  }
+
+
+
 
     function movePacman(e) {
+        if (gameOver) {
+            loadMap();
+            resetPositions();
+            score = 0;
+            lives = 3;
+            gameOver = false;
+            update();//restart the game loop
+            return;
+        }
         if (e.code == "ArrowUp" || e.code == "KeyW") {
             pacman.updateDirection('U');
             pacman.image = pacmanUpImage;
@@ -232,6 +299,17 @@ function loadMap() {
                 a.y < b.y + b.height &&
                 a.y + a.height > b.y;
     }
+    function resetPositions() {
+        pacman.reset();
+        pacman.velocityX = 0;
+        pacman.velocityY = 0;
+        for (let ghost of ghosts.values()) {
+            ghost.reset();
+            const newDirection = directions[Math.floor(Math.random()*4)];
+            ghost.updateDirection(newDirection);
+        }
+    }
+
 
 
 
@@ -286,6 +364,12 @@ class Block {
             this.velocityY = 0;
         }
     }
+    reset() {
+        this.x = this.startX;
+        this.y = this.startY;
+        
     }
+}
+    
 
 
