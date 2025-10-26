@@ -32,6 +32,8 @@ window.onload = function() {
     console.log(foods.size);
     console.log(ghosts.size);
     console.log(pacman.x, pacman.y);
+    update();
+
 }
 
 //X = wall, O = skip, P = pac man, ' ' = food
@@ -102,6 +104,7 @@ function loadMap() {
     walls.clear();
     foods.clear();
     ghosts.clear();
+
     
     for (let r = 0; r < rowCount; r++) {
         for (let c = 0; c < columnCount; c++) {
@@ -140,15 +143,28 @@ function loadMap() {
                 const food = new Block(null, x + 14, y + 14, 4, 4);
                 foods.add(food);
             }
-        }}}
+        
+        }
+    }
+}
+    function update() {
+        draw();
+        setTimeout(update, 50);
+        
+    }
+    function draw() {
+        context.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height);
+    }
+
+
 
 class Block {
-    constructor(image, x, y, width) {
+    constructor(image, x, y, width,height) {
         this.x = x;
         this.y = y;
         this.image = image;
         this.width = width;
-        this.height = this.height;
+        this.height = height;
         this.startX = x;
         this.startY = y;
     }
